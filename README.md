@@ -298,32 +298,76 @@ run it locally first)._
 
 ## AI-use disclosure
 
-_TODO: this section needs to be filled in by you before submitting — the
-case study explicitly asks for specifics about which suggestions you
-accepted vs. rejected, how you validated AI-generated code, and what you
-found most technically challenging. A generic AI wrote the initial scaffold
-in this repo (see below); you should describe your own review process on
-top of it, since that's what the follow-up interview will focus on._
-
 **Tool used:** Claude Code (Anthropic), used to scaffold the initial
 end-to-end prototype (Go/Gin backend, SQLite schema/aggregation, real
 Chicago Data Portal ingestion, Next.js frontend) from the case study PDF in
-a single session.
+a single session, and then iterated with me across many follow-up rounds
+rather than in one shot.
 
-**Notable mid-session correction:** the first pass used synthetic
-(generated, not real) trip data and a naive design that would have tried to
-aggregate the full ~200M-row Chicago dataset live via the Socrata query API.
-Both were wrong: synthetic data doesn't satisfy "use a public mobility
-dataset," and the live aggregation approach turned out to be unreliably
-slow (40-150+ second queries, frequent timeouts) even with an app token.
-The fix — fetch real but bounded raw rows fast, aggregate locally in SQL —
-came from actually timing several query shapes against the live API rather
-than assuming the first approach would scale.
+**Suggestions I accepted:** the overall architecture (Go/Gin + SQLite +
+Next.js), the two-level `GROUP BY` aggregation design, and the per-hour
+bounded fetch strategy for the Chicago data once it was proven fast in
+practice (see below).
 
-**What to describe here yourself:**
-- Which parts of this scaffold you kept as-is vs. changed, and why.
-- Anything you found suspicious or incorrect in the generated code
-  (e.g., the one-real-week sample size, the weather multiplier's specific
-  constants, the 15% action threshold) and how you validated or adjusted it.
-- At least one suggestion you rejected or substantially changed.
-- What you found most technically challenging to reason about or extend.
+**Notable mid-session correction (accepted):** the first pass used
+synthetic (generated, not real) trip data and a naive design that would
+have tried to aggregate the full ~200M-row Chicago dataset live via the
+Socrata query API. Both were wrong: synthetic data doesn't satisfy "use a
+public mobility dataset," and the live aggregation approach turned out to
+be unreliably slow (40-150+ second queries, frequent timeouts) even with an
+app token. I pushed back on both and required real Gin + real data instead
+of the stdlib/synthetic-data starting point. The fix — fetch real but
+bounded raw rows fast, aggregate locally in SQL — came from actually timing
+several query shapes against the live API rather than assuming the first
+approach would scale.
+
+**Suggestion I rejected: widening the baseline to 4 weeks of real data.** I
+initially asked for this to make `sample_days` less thin (currently 1 real
+day per bucket). Partway through the second fetch attempt (the first had
+crashed on a request timeout), I stopped it — a 4x larger fetch and a much
+bigger committed CSV felt like the wrong trade-off for an 8-10 hour scoped
+prototype, and I wasn't confident the marginal baseline quality was worth
+the added fetch fragility and repo bloat. I reverted `cmd/fetchchicago` to
+`numWeeks = 1` and kept the original real one-week extract
+(`chicago_trips.csv`, 762,038 rows). This is called out explicitly in
+"Assumptions, trade-offs & limitations" above as the single biggest lever
+for improving baseline quality if I had more time.
+
+**Suggestion I was skeptical of, then verified hands-on: the "no action
+needed" result.** The app consistently showed "no action needed" in my own
+testing. Rather than assume the recommendation logic was broken, I had
+Claude Code walk me through the `assess()` function line by line and
+confirmed the real cause: actual Chicago weather at the time was genuinely
+dry (0% precipitation probability everywhere), so every area's
+`ExcessRatio` was legitimately near zero — "no action needed" was the
+*correct* output, not a bug. To be able to demonstrate the other branch on
+demand (for this README and the interview), I asked for an explicitly
+opt-in, clearly-labeled demo override (`?demo_rain_area=<id>`) that fakes
+heavy rain for exactly one requested area while leaving every other area's
+weather live and real. It never activates unless a request asks for it,
+and I verified via curl that it correctly flips `ActionNeeded` to `true`
+without touching the real recommendation path.
+
+**How I validated the generated code:**
+- Read through the Go source myself and had Claude Code explain specific
+  logic in detail before trusting it — in particular the `assess()`
+  function, `WeatherMultiplier`'s formula and arguments, and what
+  `ActionThreshold` and `sample_days` actually mean and where their values
+  come from (i.e., which are principled vs. arbitrary judgment calls).
+- Ran the app locally and connected DBeaver directly to the SQLite file
+  (`backend/control_room.db`) to inspect the real `trips` and
+  `hourly_baseline` tables myself, rather than trusting the API response
+  alone.
+
+**Most technically challenging part:** the weather-multiplier and
+action-threshold logic (`internal/recommend/heuristic.go` and
+`recommend.go`). Unlike the SQL aggregation or the data-fetch plumbing,
+which are mechanically verifiable (run it, check the numbers), this part
+is a heuristic with no ground truth to check it against — trips in the
+dataset aren't tagged with the weather at the time they happened, so there
+is no way to backtest whether `1.0 + 0.5×precip_probability + 0.03×mm`
+(capped at 1.6) or the 15% action threshold are "right." Reasoning about
+this meant separating what's defensible (precipitation increasing rideshare
+demand is well-documented) from what's an arbitrary but reasonable
+placeholder (the specific constants and cap) — and being able to say so
+plainly in an interview instead of overstating the model's rigor.

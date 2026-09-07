@@ -84,7 +84,7 @@ func assess(rows []db.BaselineRow, ws WeatherSource, ctx context.Context, dow, h
 			Adjusted:   row.AvgTrips,
 		}
 
-		cond, err := ws.Current(ctx, 28.6139,77.2090)
+		cond, err := ws.Current(ctx, row.Lat, row.Lon)
 		fmt.Printf("current codtion of %v is perciMM: %v and Probability: %v \n",a.AreaName,cond.PrecipitationMM,cond.PrecipProbability)
 		if err != nil {
 			degraded = true
