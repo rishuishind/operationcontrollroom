@@ -1,3 +1,6 @@
+<img width="1470" height="956" alt="Screenshot 2026-09-07 at 10 47 14 AM" src="https://github.com/user-attachments/assets/94456669-8dc6-406c-bcfa-cd974dbcefc9" />
+<img width="1470" height="956" alt="Screenshot 2026-09-07 at 10 46 52 AM" src="https://github.com/user-attachments/assets/fda5a6e5-02c3-4c9b-a485-c26c87059c7d" />
+<img width="1470" height="956" alt="Screenshot 2026-09-07 at 10 46 42 AM" src="https://github.com/user-attachments/assets/cf3e929b-ed6e-4d13-aebb-5527560f22f4" />
 # Operations Control Room
 
 A small, working web app that gives a Chicago rideshare marketplace operator
