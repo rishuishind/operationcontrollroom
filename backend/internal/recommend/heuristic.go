@@ -3,7 +3,7 @@ package recommend
 // WeatherMultiplier converts current precipitation into a demand
 // multiplier applied to the historical baseline.
 //
-// Assumption (documented in README "Assumptions & Limitations"): rain is a
+// Assumption: rain is a
 // well-known driver of increased rideshare demand (people avoid walking/
 // transit), but we do not have historical trip data tagged with the
 // weather at the time, so we cannot calibrate this multiplier from our own

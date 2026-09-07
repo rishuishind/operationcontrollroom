@@ -16,7 +16,7 @@ import (
 // weather-adjusted expected demand exceeds its baseline by at least this
 // fraction. Below this, weather-driven noise isn't worth an operator
 // disrupting driver positioning for -- so no intervention is recommended.
-const ActionThreshold = 0.15
+const ActionThreshold = 0.01
 
 // WeatherSource is the subset of weather.Client used here, so tests can
 // inject a fake that fails or returns fixed conditions.
@@ -84,7 +84,8 @@ func assess(rows []db.BaselineRow, ws WeatherSource, ctx context.Context, dow, h
 			Adjusted:   row.AvgTrips,
 		}
 
-		cond, err := ws.Current(ctx, row.Lat, row.Lon)
+		cond, err := ws.Current(ctx, 28.6139,77.2090)
+		fmt.Printf("current codtion of %v is perciMM: %v and Probability: %v \n",a.AreaName,cond.PrecipitationMM,cond.PrecipProbability)
 		if err != nil {
 			degraded = true
 		} else {

@@ -48,7 +48,13 @@ func (s *Server) handleRecommendation(c *gin.Context) {
 		now = parsed
 	}
 
-	rec, err := recommend.Build(c.Request.Context(), s.DB, s.Weather, now)
+	weatherSource := s.Weather
+	if rainArea := c.Query("demo_rain_area"); rainArea != "" {
+		log.Printf("DEMO MODE: simulating heavy rain for community area id=%s (requested via ?demo_rain_area)", rainArea)
+		weatherSource = withDemoRain(s.Weather, rainArea)
+	}
+
+	rec, err := recommend.Build(c.Request.Context(), s.DB, weatherSource, now)
 	if err != nil {
 		log.Printf("build recommendation: %v", err)
 		c.String(http.StatusInternalServerError, "failed to build recommendation")
